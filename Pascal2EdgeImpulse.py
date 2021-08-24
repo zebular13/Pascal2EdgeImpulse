@@ -1,3 +1,12 @@
+# This script converts Pascal VOC to an Edge Impulse JSON file
+# To use it, change the path to the path where your annotation files in Pascal VOC format are
+# Change resize_ratio to 1 if you're not doing any resizing. 
+# The file will output as "bounding_boxes.labels"
+
+# To use it, place it in the same folder as your labels and run the edge impulse uploader: 
+# edge-impulse-uploader *(must install the edge impulse CLI first)*
+# see doc here https://docs.edgeimpulse.com/docs/cli-uploader
+
 import xmltodict
 import json
 import os 
@@ -5,9 +14,7 @@ import glob
 from collections import Counter
 import time
 
-start = time.time()
-
-#annotation_path = r"C:\\Users\\044560\\Documents\\EdgeImpulseTalk\\subset\\annotations\\hard_hat_workers0.xml"
+# start = time.time()
 
 # If resizing, add your own resize ratio here. If not, change to 1
 resize_ratio = 1.3
@@ -16,13 +23,13 @@ def Pascal2JSON(path):
     attrDict = dict()
     attrDict["version"] = 1
     attrDict["type"] = "bounding-box-labels"
-    images = list()
-    annotations = list()
+    images = dict()
     
     #for filename in glob.glob(os.path.join(path, '*.xml')):
     for filename in  os.listdir(path):
+        annotations = list()
         if filename.endswith(".xml"):
-            image = dict()
+            
             print(filename)
             #doc = xmltodict.parse(open(annotation_path).read())
             doc = xmltodict.parse(open(os.path.join(path, filename)).read())
@@ -47,27 +54,28 @@ def Pascal2JSON(path):
                     width = (int(obj["bndbox"]["xmax"]) / resize_ratio) - xmin
                     height = (int(obj["bndbox"]["ymax"]) / resize_ratio) - ymin
 
-                    annotation["xmin"] = round(xmin)
-                    annotation["ymin"] = round(ymin)
+                    annotation["x"] = round(xmin)
+                    annotation["y"] = round(ymin)
                     annotation["width"] = round(width)
                     annotation["height"] = round(height)
                     annotations.append(annotation)
                     if n==1:
                         #print("n is one")
                         break
-            image[filename] = annotations
+            filename = filename.replace(".xml",".jpg")
+            images[filename] = annotations
             #image[str(doc['annotation']['filename'])] = annotations
-    images.append(image)
+        #images.append(image)
 
     attrDict["boundingBoxes"] = images
 
     # Write the dictionary created from XML to a JSON string
     jsonString = json.dumps(attrDict)
-    with open("annotations2.json", "w") as f:
+    with open("bounding_boxes.labels", "w") as f:
         f.write(jsonString)
 
-path = "C:\\Users\\044560\\Documents\\EdgeImpulseTalk\\subset\\annotations"
+path = "C:\\Users\\044560\\Documents\\EdgeImpulseTalk\\tinysubset\\annotations"
 Pascal2JSON(path)
 
-end = time.time() - start
-print(end)
+# end = time.time() - start
+# print("time is %.2f", end)
