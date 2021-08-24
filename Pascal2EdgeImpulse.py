@@ -10,7 +10,6 @@
 import xmltodict
 import json
 import os 
-import glob
 from collections import Counter
 import time
 
@@ -24,8 +23,7 @@ def Pascal2JSON(path):
     attrDict["version"] = 1
     attrDict["type"] = "bounding-box-labels"
     images = dict()
-    
-    #for filename in glob.glob(os.path.join(path, '*.xml')):
+
     for filename in  os.listdir(path):
         annotations = list()
         if filename.endswith(".xml"):
@@ -74,7 +72,7 @@ def Pascal2JSON(path):
     with open("bounding_boxes.labels", "w") as f:
         f.write(jsonString)
 
-path = "C:\\Users\\044560\\Documents\\EdgeImpulseTalk\\tinysubset\\annotations"
+path = "C:\\Users\\044560\\Documents\\EdgeImpulseTalk\\subset\\annotations"
 Pascal2JSON(path)
 
 # end = time.time() - start
