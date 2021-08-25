@@ -32,60 +32,58 @@ def Pascal2JSON(input_path, output_path):
         annotations = list()
         if filename.endswith(".xml"):
             filename_jpg = filename.replace(".xml",".jpg")
+   
+            print(filename)
+            doc = xmltodict.parse(open(os.path.join(input_path, filename)).read())
+            #print(doc['annotation']['filename'])
             
-            try:       
-                print(filename)
-                doc = xmltodict.parse(open(os.path.join(input_path, filename)).read())
-                #print(doc['annotation']['filename'])
-                
 
-                n = 0
-                if 'object' in doc['annotation']:
-                    #print("object found")
-                    #print(doc['annotation']['object'])
+            n = 0
+            if 'object' in doc['annotation']:
+                #print("object found")
+                #print(doc['annotation']['object'])
 
-                    for obj in doc['annotation']['object']:
-                        #print("Object before conversion= %s", obj)
-                        if obj == "name": # hacky code to break in case the xml file only has a single Object
-                            n = 1
-                            obj = doc['annotation']['object']
-                        #print("Object after conversion = %s", obj)
-                        annotation = dict()
-                        #print(obj['name'])
-                        annotation["label"] = str(obj['name']) #TypeError: string indices must be integers
-                        xmin = int(obj["bndbox"]["xmin"]) / resize_ratio
-                        ymin = int(obj["bndbox"]["ymin"]) / resize_ratio
-                        width = (int(obj["bndbox"]["xmax"]) / resize_ratio) - xmin
-                        height = (int(obj["bndbox"]["ymax"]) / resize_ratio) - ymin
+                for obj in doc['annotation']['object']:
+                    #print("Object before conversion= %s", obj)
+                    if obj == "name": # hacky code to break in case the xml file only has a single Object
+                        n = 1
+                        obj = doc['annotation']['object']
+                    #print("Object after conversion = %s", obj)
+                    annotation = dict()
+                    #print(obj['name'])
+                    annotation["label"] = str(obj['name']) #TypeError: string indices must be integers
+                    xmin = int(obj["bndbox"]["xmin"]) / resize_ratio
+                    ymin = int(obj["bndbox"]["ymin"]) / resize_ratio
+                    width = (int(obj["bndbox"]["xmax"]) / resize_ratio) - xmin
+                    height = (int(obj["bndbox"]["ymax"]) / resize_ratio) - ymin
 
-                        #if height or width of any of the annotations is less than min_size, skip to next filename
-                        #if(height<min_size) or (width < min_size):
-                        if(height*width < min_total_size):
-                            #annotation = dict()
-                            raise Exception("file {0} has annotations smaller than {1}px".format(filename, min_size))
+                    #if height or width of any of the annotations is less than min_size, skip to next filename
+                    #if(height<min_size) or (width < min_size):
+                    if(height*width < min_total_size):
+                        annotations = list()
+                        too_small_image = os.path.join(output_path, filename_jpg)
+                        print(too_small_image)
+                        too_small_annotation = os.path.join(input_path, filename)
+                        if os.path.exists(too_small_image):
+                            os.remove(too_small_image)
+                        if os.path.exists(too_small_annotation):
+                            os.remove(too_small_annotation)
+                        print("file {0} has annotations smaller than {1}px".format(filename, min_size))
+                        break
 
-                        annotation["x"] = round(xmin)
-                        annotation["y"] = round(ymin)
-                        annotation["width"] = round(width)
-                        annotation["height"] = round(height)
-    
-                        annotations.append(annotation)
-                        if n==1:
-                            #print("n is one")
-                            break
-                        
+                    annotation["x"] = round(xmin)
+                    annotation["y"] = round(ymin)
+                    annotation["width"] = round(width)
+                    annotation["height"] = round(height)
+
+                    annotations.append(annotation)
+                    if n==1:
                         images[filename_jpg] = annotations
-            except:
-                #annotations = list()
-                too_small_image = os.path.join(output_path, filename_jpg)
-                print(too_small_image)
-                too_small_annotation = os.path.join(input_path, filename)
-                if os.path.exists(too_small_image):
-                    os.remove(too_small_image)
-                if os.path.exists(too_small_annotation):
-                    os.remove(too_small_annotation)
-                #print("file {0} has annotations smaller than {1}px".format(filename, min_size))
-                continue
+                        #print("n is one")
+                        break
+                    
+                    images[filename_jpg] = annotations
+                
 
             
             #image[str(doc['annotation']['filename'])] = annotations
