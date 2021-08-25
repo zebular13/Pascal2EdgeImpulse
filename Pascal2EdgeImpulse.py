@@ -18,50 +18,76 @@ import time
 # If resizing, add your own resize ratio here. If not, change to 1
 resize_ratio = 1.3
 
-def Pascal2JSON(path):
+# minimum width/height of annotation 
+min_size = 15
+min_total_size = 300
+
+def Pascal2JSON(input_path, output_path):
     attrDict = dict()
     attrDict["version"] = 1
     attrDict["type"] = "bounding-box-labels"
     images = dict()
 
-    for filename in  os.listdir(path):
+    for filename in  os.listdir(input_path):
         annotations = list()
         if filename.endswith(".xml"):
+            filename_jpg = filename.replace(".xml",".jpg")
             
-            print(filename)
-            #doc = xmltodict.parse(open(annotation_path).read())
-            doc = xmltodict.parse(open(os.path.join(path, filename)).read())
-            #print(doc['annotation']['filename'])
-            n = 0
+            try:       
+                print(filename)
+                doc = xmltodict.parse(open(os.path.join(input_path, filename)).read())
+                #print(doc['annotation']['filename'])
+                
 
-            if 'object' in doc['annotation']:
-                #print("object found")
-                #print(doc['annotation']['object'])
+                n = 0
+                if 'object' in doc['annotation']:
+                    #print("object found")
+                    #print(doc['annotation']['object'])
 
-                for obj in doc['annotation']['object']:
-                    #print("Object before conversion= %s", obj)
-                    if obj == "name": # hacky code to break in case the xml file only has a single Object
-                        n = 1
-                        obj = doc['annotation']['object']
-                    #print("Object after conversion = %s", obj)
-                    annotation = dict()
-                    #print(obj['name'])
-                    annotation["label"] = str(obj['name']) #TypeError: string indices must be integers
-                    xmin = int(obj["bndbox"]["xmin"]) / resize_ratio
-                    ymin = int(obj["bndbox"]["ymin"]) / resize_ratio
-                    width = (int(obj["bndbox"]["xmax"]) / resize_ratio) - xmin
-                    height = (int(obj["bndbox"]["ymax"]) / resize_ratio) - ymin
+                    for obj in doc['annotation']['object']:
+                        #print("Object before conversion= %s", obj)
+                        if obj == "name": # hacky code to break in case the xml file only has a single Object
+                            n = 1
+                            obj = doc['annotation']['object']
+                        #print("Object after conversion = %s", obj)
+                        annotation = dict()
+                        #print(obj['name'])
+                        annotation["label"] = str(obj['name']) #TypeError: string indices must be integers
+                        xmin = int(obj["bndbox"]["xmin"]) / resize_ratio
+                        ymin = int(obj["bndbox"]["ymin"]) / resize_ratio
+                        width = (int(obj["bndbox"]["xmax"]) / resize_ratio) - xmin
+                        height = (int(obj["bndbox"]["ymax"]) / resize_ratio) - ymin
 
-                    annotation["x"] = round(xmin)
-                    annotation["y"] = round(ymin)
-                    annotation["width"] = round(width)
-                    annotation["height"] = round(height)
-                    annotations.append(annotation)
-                    if n==1:
-                        #print("n is one")
-                        break
-            filename = filename.replace(".xml",".jpg")
-            images[filename] = annotations
+                        #if height or width of any of the annotations is less than min_size, skip to next filename
+                        #if(height<min_size) or (width < min_size):
+                        if(height*width < min_total_size):
+                            #annotation = dict()
+                            raise Exception("file {0} has annotations smaller than {1}px".format(filename, min_size))
+
+                        annotation["x"] = round(xmin)
+                        annotation["y"] = round(ymin)
+                        annotation["width"] = round(width)
+                        annotation["height"] = round(height)
+    
+                        annotations.append(annotation)
+                        if n==1:
+                            #print("n is one")
+                            break
+                        
+                        images[filename_jpg] = annotations
+            except:
+                #annotations = list()
+                too_small_image = os.path.join(output_path, filename_jpg)
+                print(too_small_image)
+                too_small_annotation = os.path.join(input_path, filename)
+                if os.path.exists(too_small_image):
+                    os.remove(too_small_image)
+                if os.path.exists(too_small_annotation):
+                    os.remove(too_small_annotation)
+                #print("file {0} has annotations smaller than {1}px".format(filename, min_size))
+                continue
+
+            
             #image[str(doc['annotation']['filename'])] = annotations
         #images.append(image)
 
@@ -69,11 +95,21 @@ def Pascal2JSON(path):
 
     # Write the dictionary created from XML to a JSON string
     jsonString = json.dumps(attrDict)
-    with open("bounding_boxes.labels", "w") as f:
+    with open((os.path.join(output_path, "bounding_boxes.labels.json")), "w") as f:
         f.write(jsonString)
 
-path = "C:\\Users\\044560\\Documents\\EdgeImpulseTalk\\subset\\annotations"
-Pascal2JSON(path)
+def CleanUpExtraImages(input_path, output_path):
+    for filename in os.listdir(output_path):
+        if filename.endswith(".jpg"):
+            filename_xml = filename.replace(".jpg", ".xml")
+            if not os.path.exists(os.path.join(output_path, filename_xml)):
+                os.remove(os.path.join(output_path, filename))
+
+input_path = "C:\\Users\\044560\\Documents\\EdgeImpulseTalk\\testset\\annotations"
+output_path = "C:\\Users\\044560\\Documents\\EdgeImpulseTalk\\testset\\output"
+Pascal2JSON(input_path, output_path)
+
+#CleanUpExtraImages(input_path, output_path)
 
 # end = time.time() - start
-# print("time is %.2f", end)
+# print("time is {0}.format(end))
